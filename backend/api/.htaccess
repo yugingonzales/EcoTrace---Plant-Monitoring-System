@@ -1,0 +1,11 @@
+# Enable mod_rewrite
+RewriteEngine On
+RewriteBase /EcoTrace/backend/api/
+
+# Allow access to existing files and directories
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME} !-d
+
+# Prevent direct access to php files (optional security)
+# Uncomment if you want to route through index.php
+# RewriteRule ^(.*)$ index.php [QSA,L]
