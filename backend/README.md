@@ -1,82 +1,218 @@
 # EcoTrace Backend API
 
-PHP REST API for plant monitoring and verification. Phase 1 implementation with 10 core endpoints.
+**Status:** Phase 1 ✅ Core API implementation complete  
+**Base URL:** `http://localhost/repos/EcoTrace/backend/api/`  
+**Framework:** PHP with MySQLi  
+**Authentication:** JWT (JSON Web Tokens)
 
-**Base URL:** `http://localhost/repos/EcoTrace/backend/api/`
+## Table of Contents
 
-## Documentation
+- [Overview](#overview)
+- [Quick Start](#quick-start)
+- [Directory Structure](#directory-structure)
+- [API Endpoints](#api-endpoints)
+- [Testing](#testing)
+- [Documentation](#documentation)
+- [Configuration](#configuration)
+- [Security](#security)
 
-- 📖 **[TALEND_API_TESTING_GUIDE.md](./TALEND_API_TESTING_GUIDE.md)** - Complete testing guide with step-by-step walkthroughs using Talend API Tester Chrome extension
-- 🔗 **[BACKEND_ANALYSIS.md](./BACKEND_ANALYSIS.md)** - Architecture analysis showing how all files are connected and verified to use correct paths
+## Overview
+
+EcoTrace Backend is a PHP REST API designed for plant monitoring and verification. It provides core functionality for:
+- User authentication with JWT tokens
+- Plant location management with geospatial queries
+- Event management for planting campaigns
+- Plant reservation system (7-day locks)
+- Plant verification and health tracking (immutable records)
+- Photo upload and storage
 
 ## Quick Start
 
-### Setup
-1. Copy `backend/` to `C:\xampp\htdocs\EcoTrace\backend\`
-2. Start XAMPP (Apache + MySQL)
-3. Create database `ecotrace_db` in phpMyAdmin
-4. Import `backend/database/ecotrace_db.sql`
-5. Test: `http://localhost/repos/EcoTrace/backend/api/auth/login.php`
+### Prerequisites
+- XAMPP (Apache + MySQL) or similar PHP/MySQL stack
+- PHP 7.4+
+- MySQL 5.7+
 
-### Database Setup
-- Open phpMyAdmin: http://localhost/phpmyadmin
-- Create database: `ecotrace_db`
-- Import SQL: `backend/database/setup.sql`
-- All 7 tables will be created with proper indexes
+### Setup Steps
+
+1. **Clone/Copy Repository**
+   ```
+   Copy backend/ to C:\xampp\htdocs\repos\EcoTrace\backend\
+   ```
+
+2. **Start Services**
+   - Start XAMPP (Apache + MySQL)
+   - Verify Apache is running on port 80
+
+3. **Create Database**
+   - Open phpMyAdmin: `http://localhost/phpmyadmin`
+   - Create new database: `ecotrace_db`
+   - Ensure charset is `utf8mb4_unicode_ci`
+
+4. **Import Database Schema**
+   - In phpMyAdmin, select `ecotrace_db`
+   - Go to Import tab
+   - Upload `backend/database/ecotrace_db.sql`
+   - Click Import
+   - Verify 7 tables are created: ecotag_students, ecotag_events, ecotag_plants, ecotrace_tasks, ecotrace_reservations, ecotrace_verifications, ecotrace_photos
+
+5. **Test Installation**
+   - Open browser: `http://localhost/repos/EcoTrace/backend/api/auth/login.php`
+   - Should see error message indicating backend is accessible
+
+## Directory Structure
+
+```
+backend/
+├── api/                          # API endpoints
+│   ├── index.php                 # API router
+│   ├── .htaccess                 # URL rewriting rules
+│   ├── auth/
+│   │   └── login.php             # Authentication endpoint
+│   ├── events/
+│   │   ├── index.php             # List events
+│   │   └── detail.php            # Event details
+│   ├── plants/
+│   │   ├── nearby.php            # Geospatial query
+│   │   └── detail.php            # Plant details
+│   ├── reservations/
+│   │   ├── create.php            # Create reservation
+│   │   ├── check.php             # Check reservation status
+│   │   └── release.php           # Release reservation
+│   └── verifications/
+│       ├── submit.php            # Submit verification
+│       └── history.php           # Get verification history
+├── config/
+│   └── db.php                    # Database & API configuration
+├── lib/
+│   ├── auth.php                  # JWT token handler
+│   ├── response.php              # Response formatting
+│   ├── validators.php            # Input validation
+│   └── geospatial.php            # Distance calculations
+├── database/
+│   └── ecotrace_db.sql           # Database schema & initial data
+├── README.md                     # Backend documentation (this file)
+├── TALEND_API_TESTING_GUIDE.md   # Testing guide with Talend API Tester
+└── BACKEND_ANALYSIS.md           # Architecture analysis & verification
+```
 
 ## API Endpoints (Phase 1)
 
-### Authentication
-- **POST** `/auth/login.php` - Login with email/password, returns JWT token
+### 1. Authentication
 
-### Events
-- **GET** `/events/index.php` - List all active events
-- **GET** `/events/detail.php?id=1` - Get event details
+| Endpoint | Method | Auth | Description |
+|----------|--------|------|-------------|
+| `/auth/login.php` | POST | ❌ | Login with email/password, returns JWT token |
 
-### Plants
-- **GET** `/plants/nearby.php?latitude=12.533&longitude=124.872&radius=5&limit=10` - Get nearby plants
-- **GET** `/plants/detail.php?id=1` - Get plant details and verification history
+**Request:**
+```json
+{
+  "email": "test@example.com",
+  "password": "password"
+}
+```
 
-### Reservations
-- **POST** `/reservations/create.php` - Reserve plant (7-day lock)
-- **GET** `/reservations/check.php?plant_id=1` - Check reservation status
-- **POST** `/reservations/release.php` - Release your reservation
+**Response:**
+```json
+{
+  "success": true,
+  "message": "Login successful",
+  "data": {
+    "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+    "student": {
+      "id": 1,
+      "name": "Student Name",
+      "email": "test@example.com",
+      "yearBatch": "2024"
+    }
+  }
+}
+```
 
-### Verifications
-- **POST** `/verifications/submit.php` - Submit plant verification (immutable)
-- **GET** `/verifications/history.php?event_id=1` - Get verification history
+### 2. Events
+
+| Endpoint | Method | Auth | Description |
+|----------|--------|------|-------------|
+| `/events/index.php` | GET | ✅ | List all active events |
+| `/events/detail.php?id=1` | GET | ✅ | Get specific event details |
+
+### 3. Plants
+
+| Endpoint | Method | Auth | Description |
+|----------|--------|------|-------------|
+| `/plants/nearby.php` | GET | ✅ | Get nearby plants (geospatial) |
+| `/plants/detail.php?id=1` | GET | ✅ | Get plant details with verification history |
+
+**Query Parameters for `nearby.php`:**
+- `latitude` (required) - User's latitude
+- `longitude` (required) - User's longitude
+- `radius` (optional) - Search radius in km (default: 5, max: 100)
+- `limit` (optional) - Result limit (default: 10, max: 100)
+- `filter` (optional) - Filter by status: 'all', 'verified', 'unverified'
+
+### 4. Reservations
+
+| Endpoint | Method | Auth | Description |
+|----------|--------|------|-------------|
+| `/reservations/create.php` | POST | ✅ | Reserve a plant (7-day lock) |
+| `/reservations/check.php?plant_id=1` | GET | ✅ | Check reservation status |
+| `/reservations/release.php` | POST | ✅ | Release a reservation |
+
+### 5. Verifications
+
+| Endpoint | Method | Auth | Description |
+|----------|--------|------|-------------|
+| `/verifications/submit.php` | POST | ✅ | Submit plant verification (immutable) |
+| `/verifications/history.php?event_id=1` | GET | ✅ | Get verification history |
 
 ## Authentication
 
-All endpoints require JWT token in Authorization header:
+All endpoints marked with ✅ require JWT token in Authorization header:
+
 ```
 Authorization: Bearer {token}
 ```
 
-Token valid for 7 days. Get token from `/auth/login.php`.
+**Token Details:**
+- Valid for 7 days (604,800 seconds)
+- Obtained from `/auth/login.php`
+- Required format: `Bearer {token_value}`
 
-## Database Tables
+**Protected Endpoint Error:**
+```json
+{
+  "success": false,
+  "message": "Unauthorized"
+}
+```
+Status Code: 401
 
-- `ecotag_students` - Student data (id, name, email, password, yearBatch)
-- `ecotag_events` - Events (id, title, startDate, endDate, treeCountPerStudent)
-- `ecotag_plants` - Plant locations (id, latitude, longitude, locationAddress, status)
-- `ecotrace_tasks` - Task assignments (eventId, plantId, studentId)
-- `ecotrace_reservations` - Reservation locks (plantId, studentId, expiresAt)
-- `ecotrace_verifications` - Verification records (plantId, studentId, healthStatus, etc.)
-- `ecotrace_photos` - Photo uploads (verificationId, photoUrl)
+## Database Schema
+
+### Tables (7 Total)
+
+| Table | Purpose | Key Fields |
+|-------|---------|-----------|
+| `ecotag_students` | User accounts | id, name, email, password, yearBatch |
+| `ecotag_events` | Planting events | id, title, startDate, endDate, treeCountPerStudent |
+| `ecotag_plants` | Plant locations | id, latitude, longitude, locationAddress, status |
+| `ecotrace_tasks` | Event assignments | eventId, plantId, studentId |
+| `ecotrace_reservations` | Reservation locks | plantId, studentId, expiresAt |
+| `ecotrace_verifications` | Verification records | plantId, studentId, healthStatus, timestamp |
+| `ecotrace_photos` | Photo storage | verificationId, photoUrl |
 
 ## Response Format
 
-Success:
+### Success Response
 ```json
 {
   "success": true,
-  "message": "Success message",
+  "message": "Operation successful",
   "data": { ... }
 }
 ```
 
-Error:
+### Error Response
 ```json
 {
   "success": false,
@@ -84,24 +220,48 @@ Error:
 }
 ```
 
+### Validation Error Response (Status 422)
+```json
+{
+  "success": false,
+  "message": "Validation failed",
+  "errors": {
+    "field_name": "Error message"
+  }
+}
+```
+
 ## Configuration
 
-Edit `backend/config/db.php` to change:
-- `DB_HOST` - MySQL host
-- `DB_USER` - MySQL username
-- `DB_PASS` - MySQL password
-- `DB_NAME` - Database name
-- `JWT_SECRET` - Change for production!
+### Database Configuration
+
+Edit `backend/config/db.php`:
+
+```php
+define('DB_HOST', 'localhost');    // MySQL host
+define('DB_USER', 'root');         // MySQL username
+define('DB_PASS', '');             // MySQL password
+define('DB_NAME', 'ecotrace_db');  // Database name
+define('API_BASE_URL', 'http://localhost/repos/EcoTrace/backend/api');
+```
+
+### Security Configuration
+
+```php
+define('JWT_SECRET', 'ecotrace_super_secret_key_2024');  // ⚠️ CHANGE FOR PRODUCTION
+define('TOKEN_EXPIRATION', 7 * 24 * 60 * 60);            // 7 days
+define('RESERVATION_LOCK_DURATION', 7 * 24 * 60 * 60);   // 7 days
+```
 
 ## Key Features
 
-✅ JWT-based authentication  
-✅ Geospatial queries (nearby plants)  
-✅ 7-day reservation system  
-✅ Immutable verification records  
-✅ Input validation & sanitization  
-✅ Prepared statements (no SQL injection)  
-✅ Proper error handling  
+✅ **JWT-based Authentication** - Secure token-based API access  
+✅ **Geospatial Queries** - Find plants by GPS coordinates  
+✅ **7-day Reservation System** - Lock plants for verification  
+✅ **Immutable Verifications** - Permanent verification records  
+✅ **Input Validation & Sanitization** - Prevent data corruption  
+✅ **Prepared Statements** - Protection against SQL injection  
+✅ **Proper Error Handling** - Meaningful error messages  
 
 ## Testing
 
