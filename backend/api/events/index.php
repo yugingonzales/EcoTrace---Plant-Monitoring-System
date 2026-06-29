@@ -17,10 +17,11 @@ if (!$user) {
 }
 
 // Get active events
-$query = "SELECT id, title, description, startDate, endDate, treeCountPerStudent, targetYearBatch, status 
-          FROM ecotag_events 
-          WHERE status = 'active' AND endDate >= CURDATE()
-          ORDER BY startDate DESC";
+$query = "SELECT event_id, event_title, event_description, start_date, end_date, 
+                 trees_per_student, target_year_batch, event_status 
+          FROM ecotrace_events 
+          WHERE event_status = 'active' AND end_date >= CURDATE()
+          ORDER BY start_date DESC";
 
 $result = $conn->query($query);
 
@@ -30,20 +31,26 @@ if (!$result) {
 
 $events = [];
 while ($row = $result->fetch_assoc()) {
-    $row['startDate'] = date('Y-m-d', strtotime($row['startDate']));
-    $row['endDate'] = date('Y-m-d', strtotime($row['endDate']));
-    
     // Get verification count for this event and user
-    $countQuery = "SELECT COUNT(*) as verifiedCount FROM ecotrace_verifications 
-                   WHERE eventId = ? AND studentId = ?";
+    $countQuery = "SELECT COUNT(*) as verified_count FROM ecotrace_plant_verifications 
+                   WHERE event_id = ? AND student_id = ?";
     $countStmt = $conn->prepare($countQuery);
-    $countStmt->bind_param("ii", $row['id'], $user['id']);
+    $countStmt->bind_param("ii", $row['event_id'], $user['student_id']);
     $countStmt->execute();
     $countResult = $countStmt->get_result();
     $countRow = $countResult->fetch_assoc();
-    $row['verifiedCount'] = $countRow['verifiedCount'];
     
-    $events[] = $row;
+    $events[] = [
+        'event_id' => $row['event_id'],
+        'event_title' => $row['event_title'],
+        'event_description' => $row['event_description'],
+        'start_date' => $row['start_date'],
+        'end_date' => $row['end_date'],
+        'trees_per_student' => $row['trees_per_student'],
+        'target_year_batch' => $row['target_year_batch'],
+        'event_status' => $row['event_status'],
+        'verified_count' => $countRow['verified_count']
+    ];
 }
 
 Response::success(['events' => $events], 'Events retrieved successfully');

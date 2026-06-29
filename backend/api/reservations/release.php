@@ -22,10 +22,10 @@ if (!isset($data['id'])) {
     Response::validation(['id' => 'Reservation ID is required']);
 }
 
-$reservationId = intval($data['id']);
+$reservationId = intval($data['reservation_id']);
 
 // Check if reservation exists and belongs to current user
-$query = "SELECT id, plantId, studentId FROM ecotrace_reservations WHERE id = ?";
+$query = "SELECT reservation_id, plant_id, student_id FROM ecotrace_plant_reservations WHERE reservation_id = ?";
 $stmt = $conn->prepare($query);
 $stmt->bind_param("i", $reservationId);
 $stmt->execute();
@@ -36,16 +36,16 @@ if (!$reservation) {
     Response::notFound();
 }
 
-if ($reservation['studentId'] != $user['id']) {
+if ($reservation['student_id'] != $user['student_id']) {
     Response::error('Unauthorized', 403);
 }
 
-// Delete reservation
-$deleteQuery = "DELETE FROM ecotrace_reservations WHERE id = ?";
-$deleteStmt = $conn->prepare($deleteQuery);
-$deleteStmt->bind_param("i", $reservationId);
+// Deactivate reservation
+$updateQuery = "UPDATE ecotrace_plant_reservations SET is_active = FALSE WHERE reservation_id = ?";
+$updateStmt = $conn->prepare($updateQuery);
+$updateStmt->bind_param("i", $reservationId);
 
-if (!$deleteStmt->execute()) {
+if (!$updateStmt->execute()) {
     Response::error('Failed to release reservation', 500);
 }
 

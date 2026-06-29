@@ -23,8 +23,8 @@ if (!isset($_GET['plant_id'])) {
 $plantId = intval($_GET['plant_id']);
 
 // Check for active reservation
-$query = "SELECT id, studentId, expiresAt FROM ecotrace_reservations 
-          WHERE plantId = ? AND expiresAt > NOW()";
+$query = "SELECT reservation_id, student_id, expires_at FROM ecotrace_plant_reservations 
+          WHERE plant_id = ? AND is_active = TRUE AND expires_at > NOW()";
 $stmt = $conn->prepare($query);
 $stmt->bind_param("i", $plantId);
 $stmt->execute();
@@ -38,10 +38,10 @@ if ($result->num_rows === 0) {
 }
 
 $reservation = $result->fetch_assoc();
-$isReservedByMe = $reservation['studentId'] == $user['id'];
+$isReservedByMe = $reservation['student_id'] == $user['student_id'];
 
 Response::success([
     'is_reserved' => true,
     'reserved_by_me' => $isReservedByMe,
-    'expires_at' => $reservation['expiresAt']
+    'expires_at' => $reservation['expires_at']
 ], 'Reservation status retrieved');

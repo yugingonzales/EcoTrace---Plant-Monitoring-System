@@ -29,7 +29,7 @@ if (!Validator::isValidEmail($email)) {
 }
 
 // Find student by email
-$query = "SELECT id, name, email, password, yearBatch FROM ecotag_students WHERE email = ?";
+$query = "SELECT student_id, full_name, email, password_hash, year_batch FROM ecotrace_students WHERE email = ? AND is_active = TRUE";
 $stmt = $conn->prepare($query);
 
 if (!$stmt) {
@@ -46,20 +46,26 @@ if (!$student) {
 }
 
 // Verify password
-if (!password_verify($password, $student['password'])) {
+if (!password_verify($password, $student['password_hash'])) {
     Response::error('Invalid email or password', 401);
 }
 
+// Update last login timestamp
+$updateQuery = "UPDATE ecotrace_students SET last_login_at = NOW() WHERE student_id = ?";
+$updateStmt = $conn->prepare($updateQuery);
+$updateStmt->bind_param("i", $student['student_id']);
+$updateStmt->execute();
+
 // Generate JWT token
-$token = Auth::generateToken($student['id']);
+$token = Auth::generateToken($student['student_id']);
 
 // Return success with token
 Response::success([
     'token' => $token,
     'student' => [
-        'id' => $student['id'],
-        'name' => $student['name'],
+        'student_id' => $student['student_id'],
+        'full_name' => $student['full_name'],
         'email' => $student['email'],
-        'yearBatch' => $student['yearBatch']
+        'year_batch' => $student['year_batch']
     ]
 ], 'Login successful');

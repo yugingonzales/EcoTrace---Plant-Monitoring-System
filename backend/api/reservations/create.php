@@ -27,10 +27,11 @@ if (!empty($missing)) {
 }
 
 $plantId = intval($data['plant_id']);
-$studentId = $user['id'];
+$studentId = $user['student_id'];
+$eventId = isset($data['event_id']) ? intval($data['event_id']) : null;
 
 // Check if plant exists
-$plantQuery = "SELECT id FROM ecotag_plants WHERE id = ?";
+$plantQuery = "SELECT plant_id FROM ecotrace_plants WHERE plant_id = ?";
 $plantStmt = $conn->prepare($plantQuery);
 $plantStmt->bind_param("i", $plantId);
 $plantStmt->execute();
@@ -40,9 +41,9 @@ if ($plantResult->num_rows === 0) {
     Response::notFound();
 }
 
-// Check if plant is already reserved by someone else
-$reserveQuery = "SELECT id, expiresAt FROM ecotrace_reservations 
-                 WHERE plantId = ? AND expiresAt > NOW()";
+// Check if plant is already reserved by someone else (active reservations only)
+$reserveQuery = "SELECT reservation_id, expires_at FROM ecotrace_plant_reservations 
+                 WHERE plant_id = ? AND is_active = TRUE AND expires_at > NOW()";
 $reserveStmt = $conn->prepare($reserveQuery);
 $reserveStmt->bind_param("i", $plantId);
 $reserveStmt->execute();
@@ -53,8 +54,8 @@ if ($reserveResult->num_rows > 0) {
 }
 
 // Check if already reserved by this user
-$userReserveQuery = "SELECT id FROM ecotrace_reservations 
-                     WHERE plantId = ? AND studentId = ? AND expiresAt > NOW()";
+$userReserveQuery = "SELECT reservation_id FROM ecotrace_plant_reservations 
+                     WHERE plant_id = ? AND student_id = ? AND is_active = TRUE AND expires_at > NOW()";
 $userReserveStmt = $conn->prepare($userReserveQuery);
 $userReserveStmt->bind_param("ii", $plantId, $studentId);
 $userReserveStmt->execute();
@@ -67,10 +68,10 @@ if ($userReserveResult->num_rows > 0) {
 // Create reservation (7-day lock)
 $expiresAt = date('Y-m-d H:i:s', time() + RESERVATION_LOCK_DURATION);
 
-$insertQuery = "INSERT INTO ecotrace_reservations (plantId, studentId, expiresAt) 
-                VALUES (?, ?, ?)";
+$insertQuery = "INSERT INTO ecotrace_plant_reservations (plant_id, student_id, event_id, expires_at, is_active) 
+                VALUES (?, ?, ?, ?, TRUE)";
 $insertStmt = $conn->prepare($insertQuery);
-$insertStmt->bind_param("iis", $plantId, $studentId, $expiresAt);
+$insertStmt->bind_param("iiis", $plantId, $studentId, $eventId, $expiresAt);
 
 if (!$insertStmt->execute()) {
     Response::error('Failed to create reservation', 500);
@@ -79,5 +80,8 @@ if (!$insertStmt->execute()) {
 Response::success([
     'reservation_id' => $conn->insert_id,
     'plant_id' => $plantId,
-    'expires_at' => $expiresAt
+    'student_id' => $studentId,
+    'event_id' => $eventId,
+    'expires_at' => $expiresAt,
+    'is_active' => true
 ], 'Plant reserved successfully');

@@ -29,23 +29,25 @@ if ($offset < 0) {
 }
 
 // Build query
-$query = "SELECT v.id, v.plantId, v.eventId, v.healthStatus, v.heightCm, v.circumferenceCm, 
-                 v.plantStage, v.photoUrl, v.notes, v.created_at,
-                 p.latitude, p.longitude, p.locationAddress
-          FROM ecotrace_verifications v
-          JOIN ecotag_plants p ON v.plantId = p.id
-          WHERE v.studentId = ?";
+$query = "SELECT v.verification_id, v.plant_id, v.event_id, v.health_status, v.height_cm, 
+                 v.circumference_cm, v.canopy_diameter_cm, v.plant_stage, v.leaf_condition, 
+                 v.soil_condition, v.has_pests, v.has_disease, v.needs_water, v.needs_fertilizer,
+                 v.verification_notes, v.weather_condition, v.temperature_celsius, v.verified_at,
+                 p.latitude, p.longitude, p.location_address, p.plant_species
+          FROM ecotrace_plant_verifications v
+          JOIN ecotrace_plants p ON v.plant_id = p.plant_id
+          WHERE v.student_id = ?";
 
-$params = [$user['id']];
+$params = [$user['student_id']];
 $types = "i";
 
 if ($eventId !== null) {
-    $query .= " AND v.eventId = ?";
+    $query .= " AND v.event_id = ?";
     $params[] = $eventId;
     $types .= "i";
 }
 
-$query .= " ORDER BY v.created_at DESC LIMIT ? OFFSET ?";
+$query .= " ORDER BY v.verified_at DESC LIMIT ? OFFSET ?";
 $params[] = $limit;
 $params[] = $offset;
 $types .= "ii";
@@ -62,16 +64,30 @@ $result = $stmt->get_result();
 
 $verifications = [];
 while ($row = $result->fetch_assoc()) {
-    $row['created_at'] = date('Y-m-d H:i:s', strtotime($row['created_at']));
+    // Get photos for this verification
+    $photoQuery = "SELECT photo_id, photo_url, photo_type, uploaded_at 
+                   FROM ecotrace_verification_photos 
+                   WHERE verification_id = ?";
+    $photoStmt = $conn->prepare($photoQuery);
+    $photoStmt->bind_param("i", $row['verification_id']);
+    $photoStmt->execute();
+    $photoResult = $photoStmt->get_result();
+    
+    $photos = [];
+    while ($photo = $photoResult->fetch_assoc()) {
+        $photos[] = $photo;
+    }
+    $row['photos'] = $photos;
+
     $verifications[] = $row;
 }
 
 // Get total count
-$countQuery = "SELECT COUNT(*) as total FROM ecotrace_verifications WHERE studentId = ?";
-$countParams = [$user['id']];
+$countQuery = "SELECT COUNT(*) as total FROM ecotrace_plant_verifications WHERE student_id = ?";
+$countParams = [$user['student_id']];
 
 if ($eventId !== null) {
-    $countQuery .= " AND eventId = ?";
+    $countQuery .= " AND event_id = ?";
     $countParams[] = $eventId;
 }
 
@@ -83,7 +99,7 @@ if (!$countStmt) {
 if ($eventId !== null) {
     $countStmt->bind_param("ii", ...$countParams);
 } else {
-    $countStmt->bind_param("i", $user['id']);
+    $countStmt->bind_param("i", $user['student_id']);
 }
 
 $countStmt->execute();

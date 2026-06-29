@@ -42,8 +42,9 @@ if ($limit < 1 || $limit > 100) {
 }
 
 // Get all plants
-$query = "SELECT id, latitude, longitude, locationAddress, plantedDate, status 
-          FROM ecotag_plants 
+$query = "SELECT plant_id, latitude, longitude, location_address, planted_date, 
+                 plant_status, plant_species, verification_count, last_verified_at 
+          FROM ecotrace_plants 
           LIMIT 1000";
 
 $result = $conn->query($query);
@@ -59,8 +60,18 @@ while ($row = $result->fetch_assoc()) {
     );
     
     if ($distance <= $radius) {
-        $row['distance'] = round($distance, 2);
-        $plants[] = $row;
+        $plants[] = [
+            'plant_id' => $row['plant_id'],
+            'latitude' => $row['latitude'],
+            'longitude' => $row['longitude'],
+            'location_address' => $row['location_address'],
+            'planted_date' => $row['planted_date'],
+            'plant_status' => $row['plant_status'],
+            'plant_species' => $row['plant_species'],
+            'verification_count' => $row['verification_count'],
+            'last_verified_at' => $row['last_verified_at'],
+            'distance' => round($distance, 2)
+        ];
     }
 }
 
@@ -72,8 +83,9 @@ usort($plants, function($a, $b) {
 // Apply filter
 $filteredPlants = [];
 foreach ($plants as $plant) {
-    if ($filter === 'verified' && $plant['status'] !== 'verified') continue;
-    if ($filter === 'unverified' && $plant['status'] === 'verified') continue;
+    if ($filter === 'verified' && $plant['plant_status'] !== 'verified') continue;
+    if ($filter === 'unverified' && $plant['plant_status'] === 'verified') continue;
+    if ($filter === 'pending' && $plant['plant_status'] !== 'pending') continue;
     $filteredPlants[] = $plant;
 }
 
